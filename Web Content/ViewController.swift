@@ -8,211 +8,154 @@
 
 import UIKit
 import CoreLocation
+import WebKit
 
 var manager = CLLocationManager()
-var postalCode = NSString()
-var zip2 = NSString()
+var postalCode = String()
+var zip2 = String()
+var country = String()
+var city = String()
+var state = String()
 
-
-class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDelegate
-   {
-    @IBOutlet weak var webView: UIWebView!
+class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDelegate, WKUIDelegate
+{
+    @IBOutlet weak var webView: WKWebView!
+    
     @IBOutlet weak var zip: UITextField!
-    @IBOutlet weak var weather: UILabel!
     
-    
-    
-    @IBAction func home(sender: AnyObject) {
+    @IBAction func home(_ sender: AnyObject) {
         
-        /*var alert = UIAlertController(title: "Alert", message: "Do you want to switch to the Weather App?", preferredStyle: UIAlertControllerStyle.Alert)
-        alert.addAction(UIAlertAction(title: "Click", style: UIAlertActionStyle.Default, handler: nil))
-        self.presentViewController(alert, animated: true, completion: nil)
+        let myURL = URL(string:"https://www.wunderground.com/weather/us/ny/millwood/10546")
+              let myRequest = URLRequest(url: myURL!)
         
-        alert.addAction(UIAlertAction(title: "Ok", style: .Default, handler: { action in
-            switch action.style{
-            case .Default:
-                println("default")
-                let url:NSURL = NSURL(string: "openApp://recent")!
-                self.extensionContext?.openURL(url, completionHandler: nil)
-                
-            case .Cancel:
-                println("cancel")
-                
-            case .Destructive:
-                println("destructive")
-            }
-        }))*/
-        
-        
-        let url1 = NSURL(string: "http://www.wunderground.com/cgi-bin/findweather/getForecast?query=\(zip2)#location")
-        
-        
-        let task = NSURLSession.sharedSession().dataTaskWithURL(url1!) {(data1, response, error) in
-            
-            _ = NSString (data: data1!, encoding: NSUTF8StringEncoding)
-            
-            let request1 = NSURLRequest(URL: url1!)
-            
-            self.webView.loadRequest(request1)
-            
-        }
-        
-        task.resume()
-
-        
+        self.webView.load(myRequest)
+       
     }
     
-    
-    @IBAction func buttonPressed(sender: AnyObject) {
+    @IBAction func buttonPressed(_ sender: AnyObject) {
         
-        let zip1:Int? = Int(zip.text!)
-        if (zip1 != nil && (zip1 >= 01000 && zip1 <= 99999)) {
+        city = ""
+        state = ""
+        country = ""
+        postalCode = ""
+        zip2 = ""
+        
+        zip2 = zip.text!
+        
+        print("Zip Code: \(zip2)")
+        
+        CLGeocoder().geocodeAddressString(zip2, completionHandler: {(placemarks, error) in
             
-            weather.text = "Your weather at \(zip1!) is:"
-            
-            let url = NSURL(string: "http://www.wunderground.com/cgi-bin/findweather/getForecast?query=\(zip1!)#location")
-            
-            print(url!)
-            
-            let task = NSURLSession.sharedSession().dataTaskWithURL(url!) { (data, response, error) in
+            if (error != nil) {
                 
-                _ = NSString (data: data!, encoding: NSUTF8StringEncoding)
+                print(error!)
                 
-                /*if webAddress!.containsString("<div class=\"wx-24hour wx-module wx-grid3of6 wx-weather\">") {
+            } else {
                 
-                var contentArray = webAddress!.componentsSeparatedByString("<div class=\"wx-24hour wx-module wx-grid3of6 wx-weather\">")
+                let p = CLPlacemark(placemark: (placemarks?[0])! as CLPlacemark)
                 
-                var newContentArray = contentArray[1].componentsSeparatedByString("</li></ul></div>")
+                //print(p)
                 
-                var weatherForcast: AnyObject = newContentArray[0]*/
-                
-                
-                //self.weather.text = weatherForcast
-                
-                
-                let request = NSURLRequest(URL: url!)
-                
-                //self.weather.text = weatherForcast as? String
-                
-                //println(self.weather.text)
-                self.webView.loadRequest(request)
-                //}
-            }
-            
-            task.resume()
-            
-            
-            
-        } else {
-            if zip1 == nil {
-                zip2 = "\(postalCode)"
-                print("\(postalCode)")
-                
-                weather.text = "Your weather at \(zip2) is: "
-                
-                let url1 = NSURL(string: "http://www.wunderground.com/cgi-bin/findweather/getForecast?query=\(zip2)#location")
-                
-                
-                let task = NSURLSession.sharedSession().dataTaskWithURL(url1!) {(data1, response, error) in
+                for (key, value) in p.addressDictionary! {
                     
-                    _ = NSString (data: data1!, encoding: NSUTF8StringEncoding)
+                    print("\(key) -> \(value)")
                     
-                    let request1 = NSURLRequest(URL: url1!)
+                    if "\(key)" == "ZIP" { postalCode = "\(value)"}
                     
-                    self.webView.loadRequest(request1)
+                    if "\(key)" == "CountryCode" { country = "\(value)"}
+                    
+                    if "\(key)" == "City" { city = "\(value)"}
+                    
+                    if "\(key)" == "State" { state = "\(value)"}
+                    
+                    print("Location Details: \(country), \(state), \(city), \(postalCode)")
                     
                 }
                 
-                task.resume()
-
-            } else {
-            self.weather.text = "Please enter a valid US Zip Code."
+                let myURL = URL(string:"https://www.wunderground.com/weather/\(country)/\(state)/\(city)/\(zip2)")
+                      let myRequest = URLRequest(url: myURL!)
+                
+                self.webView.load(myRequest)
+                
             }
-        }
+            
+        })
         
     }
     
-    func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        //println("locations = \(locations)")
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         
         let userLocation:CLLocation = locations[0] 
-        
-        //41.192644, -73.813008 = 39 Taconic Rd. Millwood, NY
         let latitude : CLLocationDegrees = userLocation.coordinate.latitude
         let longitude : CLLocationDegrees = userLocation.coordinate.longitude
         let alt = userLocation.altitude
         let speed = userLocation.speed
         let course = userLocation.course
-        //var distance = userLocation.distanceFromLocation(userLocation)
+        
         CLGeocoder().reverseGeocodeLocation(userLocation, completionHandler:{(placemarks, error) in
             
-            if(error != nil) {
-                print(error)
+            if (error != nil) {
+                
+                print(error!)
             } else {
-                //println(placemarks)
+                
                 let p = CLPlacemark(placemark: (placemarks?[0])! as CLPlacemark)
-                let loc = "\(p.subThoroughfare!) \(p.thoroughfare!) \n\(p.locality!), \(p.administrativeArea!) \(p.postalCode!) "
+                
+                let loc = "\(p.subThoroughfare!) \(p.thoroughfare!) \n\(p.locality!), \(p.administrativeArea!) \(p.postalCode!) \(p.country!)"
+                
                 postalCode = "\(p.postalCode!)"
+                
+                country = "\(p.country!)"
+                
+                city = "\(p.locality!)"
+                
+                state = "\(p.administrativeArea!)"
+                
                 print("Location Details: \(loc), \(latitude), \(longitude), \(alt), \(speed), \(course)")
                 
-                    
-                
             }
-                
+            
             
             
         })
-        //println("\(postalCode)")
-        /*let latDelta:CLLocationDegrees = 0.03
-        let longDelta:CLLocationDegrees = 0.03
-        var span : MKCoordinateSpan = MKCoordinateSpanMake(latDelta, longDelta)
-        var location : CLLocationCoordinate2D = CLLocationCoordinate2DMake(latitude, longitude)
-        var region : MKCoordinateRegion = MKCoordinateRegionMake(location, span)
-        mapView.setRegion(region, animated: true)
-        
-        var annotation = MKPointAnnotation()
-        
-        annotation.coordinate = location
-        
-        annotation.title = "\(latitude), \(longitude),"
-        
-        annotation.subtitle = "\(altitude), \(course), \(speed)"
-        
-        println("\(latitude), \(longitude), \(altitude), \(course), \(speed)")
-        
-        mapView.addAnnotation(annotation)
-        
-        var userPin = UILongPressGestureRecognizer(target: self, action: "action:")
-        
-        userPin.minimumPressDuration = 1.0
-        
-        mapView.addGestureRecognizer(userPin)*/
-       
         
     }
     
-   
-    func locationManager(manager: CLLocationManager, didFailWithError error: NSError) {
-        let alert = UIAlertController(title: "No Internet Connection!", message: "Please try again when you have an internet connection.", preferredStyle: UIAlertControllerStyle.Alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .Default, handler: { action in
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        
+        let alert = UIAlertController(title: "No Internet Connection!", message: "Please try again when you have an internet connection.", preferredStyle: UIAlertControllerStyle.alert)
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { action in
             
-            self.dismissViewControllerAnimated(true, completion: nil)
+            self.dismiss(animated: true, completion: nil)
             
         }))
-        self.presentViewController(alert, animated: true, completion: nil)
+        
+        self.present(alert, animated: true, completion: nil)
+        
         print("Error: \(error)")
     }
     
+    /*override func loadView() {
+        
+        let webConfiguration = WKWebViewConfiguration()
+        
+        self.webView = WKWebView(frame: .zero, configuration: webConfiguration)
+        
+        self.webView.uiDelegate = self
+        
+        view = self.webView
+    }*/
     
     override func viewDidLoad() {
         
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
         
         zip2 = ""
         
         manager = CLLocationManager()
-       
+        
         manager.delegate = self
         
         manager.desiredAccuracy = kCLLocationAccuracyBest
@@ -221,75 +164,78 @@ class ViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDe
         
         manager.startUpdatingLocation()
         
+        self.webView.scrollView.keyboardDismissMode = .onDrag
+        
         //let defaults:NSUserDefaults = NSUserDefaults(suiteName: "group.bettersearchllc.Weather")!
         
         //defaults.setObject( postalCode , forKey: "zipCode")
         
     }
     
-    override func viewDidAppear(animated: Bool) {
+    @objc func getCurrentLocation() {
         
-        if(zip2 == "") {
-            zip2 = "\(postalCode)"
-            print("Zip Code: \(postalCode)")
+        zip2 = "\(postalCode)"
+        
+        print("Zip Code: \(zip2)")
+        
+        CLGeocoder().geocodeAddressString(zip2, completionHandler: {(placemarks, error) in
             
-            self.weather.text = "Your weather at \(zip2) is: "
-            
-            let url1 = NSURL(string: "http://www.wunderground.com/cgi-bin/findweather/getForecast?query=\(zip2)#location")
-            
-            
-            let task = NSURLSession.sharedSession().dataTaskWithURL(url1!) {(data1, response, error) in
+            if (error != nil) {
                 
-                _ = NSString (data: data1!, encoding: NSUTF8StringEncoding)
+                print(error!)
                 
-                let request1 = NSURLRequest(URL: url1!)
+            } else {
                 
-                self.webView.loadRequest(request1)
+                let p = CLPlacemark(placemark: (placemarks?[0])! as CLPlacemark)
                 
-            }
-            
-            task.resume()
-            
-        } else{
-            zip2 = "10546"
-            //println("\(self.postalCode)")
-            
-            self.weather.text = "Your weather at \(zip2) is: "
-            
-            let url1 = NSURL(string: "http://www.wunderground.com/cgi-bin/findweather/getForecast?query=\(zip2)#location")
-            
-            
-            let task = NSURLSession.sharedSession().dataTaskWithURL(url1!) {(data1, response, error) in
+                for (key, value) in p.addressDictionary! {
+                    
+                    print("\(key) -> \(value)")
+                    
+                    if "\(key)" == "ZIP" { postalCode = "\(value)"}
+                    
+                    if "\(key)" == "CountryCode" { country = "\(value)"}
+                    
+                    if "\(key)" == "City" { city = "\(value)"}
+                    
+                    if "\(key)" == "State" { state = "\(value)"}
+                    
+                    print("Location Details: \(country), \(state), \(city), \(postalCode)")
+                    
+                }
                 
-                _ = NSString (data: data1!, encoding: NSUTF8StringEncoding)
+                let myURL = URL(string:"https://www.wunderground.com/weather/\(country)/\(state)/\(city)/\(zip2)")
+                let myRequest = URLRequest(url: myURL!)
                 
-                let request1 = NSURLRequest(URL: url1!)
-                
-                self.webView.loadRequest(request1)
+                self.webView.load(myRequest)
                 
             }
             
-            task.resume()
-        }
+        })
+    }
+    
+    func delay() {
+        
+        _ = Timer.scheduledTimer(timeInterval: 2, target: self, selector: #selector(getCurrentLocation), userInfo: nil, repeats: false)
         
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        
+        delay()
+        
+    }
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
     
-    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
-        self.view.endEditing(true)
-    }
-    
-    func textFieldShouldReturn(textField: UITextField) -> Bool {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         zip.resignFirstResponder()
         return true
     }
     
-
-
+    
+    
 }
-
